@@ -1,8 +1,9 @@
-import numpy as np
+import tensorflow as tf
 
 
-def init_weights_and_bias(m1, m2):
-    w = np.random.rand(m1, m2)
-    b = np.zeros(m2)
+def weight_var(shape):
+    return tf.Variable(tf.truncated_normal(shape, stddev=0.1))
 
-    return w.astype(np.float32), b.astype(np.float32)
+
+def bias_var(shape):
+    return tf.Variable(tf.constant(0.1, shape=shape))
