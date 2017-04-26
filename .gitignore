@@ -3,3 +3,5 @@
 *.ipynb
 *.iml
 *.xml
+*models/*
+*MNIST_data/*

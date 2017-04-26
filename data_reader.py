@@ -7,14 +7,13 @@ import cv2
 from globals import image_size, batch_size, num_classes
 
 
-class Dataset:
+class TrainDataset:
     def __init__(self, file_name):
         self.filename = file_name
         data = pd.read_csv(self.filename)
 
         # Split the data and convert images to float 0 to 1
         labels = data.iloc[:, 0].values
-        self.num_samples = labels.shape[0]
 
         labels_one_hot = self.convert_to_one_hot(labels)
         images = data.iloc[:, 1:].values.astype(np.float)
@@ -26,9 +25,11 @@ class Dataset:
         self.labels_train = y[:-2000]
         self.labels_val = y[-2000:]
 
-    def convert_to_one_hot(self, labels):
-        labels_one_hot = np.zeros((self.num_samples, num_classes))
-        labels_one_hot[np.arange(self.num_samples), labels] = 1
+    @staticmethod
+    def convert_to_one_hot(labels):
+        num_samples = labels.shape[0]
+        labels_one_hot = np.zeros((num_samples, num_classes))
+        labels_one_hot[np.arange(num_samples), labels] = 1
         return labels_one_hot
 
     def display(self, index):
@@ -37,7 +38,7 @@ class Dataset:
         cv2.waitKey()
 
     def iterate_batches(self):
-        n_batches = int(floor(self.num_samples / batch_size))
+        n_batches = int(floor(self.images_train.shape[0] / batch_size))
 
         x, y = shuffle(self.images_train, self.labels_train)
         for n in xrange(n_batches):
@@ -46,4 +47,11 @@ class Dataset:
 
             yield x_batch, y_batch
 
-test = Dataset('train.csv')
+
+class TestDataset:
+    def __init__(self, file_name):
+        self.filename = file_name
+        self.images_train = pd.read_csv(self.filename)
+
+
+test = TrainDataset('train.csv')

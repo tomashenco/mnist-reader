@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from globals import model_path
 from utils import weight_var, bias_var
 
 
@@ -19,6 +20,9 @@ class ANN:
         self.layers = []
         self.w = None
         self.b = None
+        self.tf_x = None
+        self.tf_y = None
+        self.y = None
 
     def forward(self, x):
         z = x
@@ -27,12 +31,9 @@ class ANN:
 
         return tf.matmul(z, self.w) + self.b
 
-    def predict(self, x):
-        return tf.argmax(self.forward(x), 1)
-
-    def fit(self, data, learning_rate=10e-4, epochs=200):
+    def build(self, data):
         # Get shape and initialise network
-        k = data.labels_train.shape[1]
+        k = data.images_train.shape[1]
         n, d = data.images_train.shape
 
         m1 = d
@@ -48,25 +49,37 @@ class ANN:
         self.w = weight_var([m1, k])
         self.b = bias_var([k])
 
-        tf_x = tf.placeholder(tf.float32, shape=[None, d])
-        tf_y = tf.placeholder(tf.float32, shape=[None, k])
-        y = self.forward(tf_x)
+        self.tf_x = tf.placeholder(tf.float32, shape=[None, d])
+        self.tf_y = tf.placeholder(tf.float32, shape=[None, k])
+        self.y = self.forward(self.tf_x)
+
+    def fit(self, data, learning_rate=10e-4, epochs=200):
+        sess = tf.InteractiveSession()
 
         # Define operations
-        cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf_y, logits=y))
+        cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.tf_y, logits=self.y))
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(cross_entropy)
-        correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(tf_y, 1))
+        correct_prediction = tf.equal(tf.argmax(self.y, 1), tf.argmax(self.tf_y, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-        init = tf.global_variables_initializer()
+        sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
+        best_accuracy = 0.0
 
-        with tf.Session() as sess:
-            sess.run(init)
+        for i in xrange(epochs):
+            for x_batch, y_batch in data.iterate_batches():
+                train_step.run(feed_dict={self.tf_x: x_batch, self.tf_y: y_batch})
 
-            for i in xrange(epochs):
-                for x_batch, y_batch in data.iterate_batches():
-                    train_step.run(feed_dict={tf_x: x_batch, tf_y: y_batch})
+            if i % 10:
+                train_accuracy = accuracy.eval(feed_dict={self.tf_x: data.images_val, self.tf_y: data.labels_val})
+                print 'Step:', i, 'Validation accuracy:', train_accuracy
+                if train_accuracy > best_accuracy:
+                    best_accuracy = train_accuracy
+                    saver.save(sess, model_path)
+                    print 'Best score! Model saved in', model_path
 
-                if i % 10:
-                    train_accuracy = accuracy.eval(feed_dict={tf_x: data.images_val, tf_y: data.labels_val})
-                    print 'Step:', i, 'Validation accuracy:', train_accuracy
+    def predict(self, x):
+        sess = tf.InteractiveSession()
+        saver = tf.train.Saver()
+        saver.restore(sess, model_path)
+        return tf.argmax(self.forward(x), 1)
