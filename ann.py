@@ -1,6 +1,7 @@
 import tensorflow as tf
+import numpy as np
 
-from globals import model_path
+from globals import num_classes, batch_size
 from utils import weight_var, bias_var
 
 
@@ -33,7 +34,7 @@ class ANN:
 
     def build(self, data):
         # Get shape and initialise network
-        k = data.images_train.shape[1]
+        k = num_classes
         n, d = data.images_train.shape
 
         m1 = d
@@ -75,11 +76,18 @@ class ANN:
                 print 'Step:', i, 'Validation accuracy:', train_accuracy
                 if train_accuracy > best_accuracy:
                     best_accuracy = train_accuracy
-                    saver.save(sess, model_path)
+                    model_path = saver.save(sess, 'models/model', global_step=10)
                     print 'Best score! Model saved in', model_path
 
     def predict(self, x):
         sess = tf.InteractiveSession()
         saver = tf.train.Saver()
-        saver.restore(sess, model_path)
-        return tf.argmax(self.forward(x), 1)
+        saver.restore(sess, 'models/model-10')
+
+        predicted_labels = np.zeros(x.shape[0])
+        predict_action = tf.argmax(self.forward(self.tf_x), 1)
+        for i in xrange(x.shape[0] // batch_size):
+            predicted_labels[i*batch_size: (i+1) * batch_size] = \
+                predict_action.eval(feed_dict={self.tf_x: x[i * batch_size: (i + 1) * batch_size]})
+
+        return predicted_labels

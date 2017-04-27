@@ -51,7 +51,13 @@ class TrainDataset:
 class TestDataset:
     def __init__(self, file_name):
         self.filename = file_name
-        self.images_train = pd.read_csv(self.filename)
+        images = pd.read_csv(self.filename).values
+        self.images_train = np.multiply(images, 1/255.0).astype(np.float32)
+
+    def display(self, index):
+        image = self.images_train[index].reshape(image_size, image_size)
+        cv2.imshow('', image)
+        cv2.waitKey()
 
 
 test = TrainDataset('train.csv')
